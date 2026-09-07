@@ -195,7 +195,7 @@ MAP_PAGE = '''
 '''
 
 # ============================================================
-# Flask 라우트
+# Flask 라우트 (여기가 핵심! 모든 변수명은 영어로)
 # ============================================================
 @app.route('/')
 def track():
@@ -210,15 +210,22 @@ def receive_location():
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data'}), 400
+
+    # 기존 데이터 읽기 (모든 변수명 영어)
     try:
         with open(DATA_FILE, 'r') as f:
             locations = json.load(f)
     except:
         locations = []
+
+    # 새 데이터 추가
     data['received_at'] = datetime.now().isoformat()
     locations.append(data)
+
+    # 저장
     with open(DATA_FILE, 'w') as f:
         json.dump(locations, f, indent=2)
+
     return jsonify({'status': 'ok', 'count': len(locations)})
 
 @app.route('/api/locations', methods=['GET'])
